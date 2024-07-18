@@ -338,6 +338,7 @@ void setup()
   timeClient.begin();
   timeClient.setTimeOffset(7200); //ez most GMT+2
   client.setServer(mqtt_server, mqtt_port);
+  client.setBufferSize(65535);
   client.setCallback(callback);
 
   mqttStartupStatus();
