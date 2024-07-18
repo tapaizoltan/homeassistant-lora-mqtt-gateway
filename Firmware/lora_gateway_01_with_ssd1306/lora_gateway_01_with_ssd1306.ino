@@ -17,10 +17,14 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 #include "mqtt_config.h";
 
 #define firmwareVersion "firmware version 1.0.0b"
+int heartbeatTiming = 37; // heartbeat küldés idő másodpercben
+unsigned long heartbeatCycleCounter = 0;
+String totalUptime;
 
 char macToId[12] = {0};
 uint8_t mac[6];
 String gatewayId;
+unsigned long lastMillis = 0;
 
 // NTP updater defifinitions start
 WiFiUDP ntpUDP;
@@ -29,7 +33,7 @@ String formattedDate;
 String timeStamp;
 String ntpDate;
 String ntpTime;
-int heartBeatCounter = 0;
+//int heartBeatCounter = 0;
 // NTP updater defifinitions end
 
 
@@ -269,7 +273,57 @@ void reconnect() {
   }
 }
 
-void setup() {
+void mqttStartupStatus()
+{
+  if (!client.connected())
+  {
+    reconnect();
+  }
+ 
+  String version_status_publish_topic = topic_prologue;
+  version_status_publish_topic += gatewayId;
+  version_status_publish_topic += "/SYS/version";
+  client.publish(version_status_publish_topic.c_str(),firmwareVersion);
+}
+
+void mqttHeartbeat()
+{
+  heartbeatCycleCounter++;
+  
+  formattedDate = timeClient.getFormattedDate();
+  int splitT = formattedDate.indexOf("T");
+  ntpDate = formattedDate.substring(0, splitT);
+  ntpTime = formattedDate.substring(splitT+1, formattedDate.length()-1);
+  String timeStamp = ntpDate;
+  timeStamp += " ";
+  timeStamp += ntpTime;
+
+  String last_status_publish_topic = topic_prologue;
+  last_status_publish_topic += gatewayId;
+  last_status_publish_topic += "/SYS/last";
+  client.publish(last_status_publish_topic.c_str(),timeStamp.c_str());
+
+  unsigned long totalUptimeHour = (heartbeatTiming*heartbeatCycleCounter)/3600;
+  unsigned long totalUptimeMinutes = ((heartbeatTiming*heartbeatCycleCounter)/60)%60;
+  unsigned long totalUptimeSeconds = (heartbeatTiming*heartbeatCycleCounter)%60;
+  
+  String totalUptime = String(totalUptimeHour);
+  totalUptime += "h";
+  totalUptime += String(totalUptimeMinutes);
+  totalUptime += "m";
+  totalUptime += String(totalUptimeSeconds);
+  totalUptime += "s";
+  
+  String uptime_status_publish_topic = topic_prologue;
+  uptime_status_publish_topic += gatewayId;
+  uptime_status_publish_topic += "/SYS/uptime";
+  client.publish(uptime_status_publish_topic.c_str(),totalUptime.c_str());
+
+  Serial.println("Transmitted heartbeat to MQTT!");
+}
+
+void setup()
+{
   Serial.begin(115200);
   initlora();
   initwifi();
@@ -302,22 +356,12 @@ void setup() {
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
 
-  /*
-   * Indítási státusz
-   */
-  if (!client.connected()) {
-    reconnect();
-  }
-  String online_status_publish_topic = topic_prologue;
-  online_status_publish_topic += gatewayId;
-  online_status_publish_topic += "/SYS/status";
-  client.publish(online_status_publish_topic.c_str(),"online");
+  mqttStartupStatus();
   
-  String version_status_publish_topic = topic_prologue;
-  version_status_publish_topic += gatewayId;
-  version_status_publish_topic += "/SYS/version";
-  client.publish(version_status_publish_topic.c_str(),firmwareVersion);
 
+  /*
+   * ezt még át kell nézni
+   
   // NTP idő
   while(!timeClient.update()) {
     timeClient.forceUpdate();
@@ -329,15 +373,25 @@ void setup() {
   String timeStamp = ntpDate;
   timeStamp += " ";
   timeStamp += ntpTime;
-  
+ 
   String online_at_status_publish_topic = topic_prologue;
   online_at_status_publish_topic += gatewayId;
   online_at_status_publish_topic += "/SYS/start_at";
   client.publish(online_at_status_publish_topic.c_str(),timeStamp);
+  */
+  
 }
 
 
-void loop() {
+void loop()
+{
+
+  if (millis() - lastMillis > (heartbeatTiming*1000))
+  {
+    lastMillis = millis();
+    mqttHeartbeat();
+  }
+  
   if (!client.connected()) {
     reconnect();
   }
