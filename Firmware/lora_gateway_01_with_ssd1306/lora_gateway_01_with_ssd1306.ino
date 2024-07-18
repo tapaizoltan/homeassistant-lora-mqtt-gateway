@@ -18,13 +18,13 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 #define firmwareVersion "firmware version 1.0.0b"
 int heartbeatTiming = 37; // heartbeat küldés idő másodpercben
-unsigned long heartbeatCycleCounter = 0;
-String totalUptime;
 
 char macToId[12] = {0};
 uint8_t mac[6];
 String gatewayId;
 unsigned long lastMillis = 0;
+unsigned long heartbeatCycleCounter = 0;
+String totalUptime;
 
 // NTP updater defifinitions start
 WiFiUDP ntpUDP;
@@ -33,16 +33,12 @@ String formattedDate;
 String timeStamp;
 String ntpDate;
 String ntpTime;
-//int heartBeatCounter = 0;
-// NTP updater defifinitions end
-
 
 WiFiClient espClient;
 PubSubClient client(espClient);
 long lastMsg = 0;
 char msg[50];
 int value = 0;
-
 
 //LoRa modul láb definíciók
 #define SCK 18
@@ -80,7 +76,6 @@ void initwifi() {
   WiFi.macAddress(mac);
   sprintf(macToId, "%02x%02x%02x%", mac[3], mac[4], mac[5]);
   gatewayId = String(macToId);
- 
 }
 
 void initlora()
@@ -94,17 +89,17 @@ void initlora()
     while (1);
     
     //LoRa paraméterek
-    LoRa.setTxPower(14); //2-17
-    //LoRa.setTxPower(17, PA_OUTPUT_PA_BOOST_PIN); //Supported values are between 2 and 17 for PA_OUTPUT_PA_BOOST_PIN
-    LoRa.setSpreadingFactor(7); //6-12
-    LoRa.setSignalBandwidth(125E3); //7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3, and 250E3.
-    LoRa.setCodingRate4(5); //5-8
-    LoRa.setPreambleLength(8); //Supported values are between 6 and 65535.
-    LoRa.setSyncWord(0x12);
-    LoRa.enableCrc();
-    //LoRa.disableCrc();
-    //LoRa.enableInvertIQ();
-    //LoRa.disableInvertIQ();
+      LoRa.setTxPower(14); //2-17
+      //LoRa.setTxPower(17, PA_OUTPUT_PA_BOOST_PIN); //Supported values are between 2 and 17 for PA_OUTPUT_PA_BOOST_PIN
+      LoRa.setSpreadingFactor(7); //6-12
+      LoRa.setSignalBandwidth(125E3); //7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3, and 250E3.
+      LoRa.setCodingRate4(5); //5-8
+      LoRa.setPreambleLength(8); //Supported values are between 6 and 65535.
+      LoRa.setSyncWord(0x12);
+      LoRa.enableCrc();
+      //LoRa.disableCrc();
+      //LoRa.enableInvertIQ();
+      //LoRa.disableInvertIQ();
   }
   Serial.println("LoRa initialisation success!");
   delay(1000);
@@ -118,8 +113,6 @@ void initoled()
     Serial.println(F("SSD1306 allocation failed"));
     for(;;);
   }
-  //delay(1000);
-  //display.clearDisplay();
 }
 
 void callback(String topic, byte* payload, unsigned int length) {
@@ -133,7 +126,6 @@ void callback(String topic, byte* payload, unsigned int length) {
   mqtt_to_lora_subscribe_topic_call += "/MQTTtoLORA";
   mqtt_to_lora_subscribe_topic_call += "/config";
 
-  
   if(topic == control_subscribe_topic_call){
     Serial.print("Message arrived on SYS topic: ");
     Serial.print(topic);
@@ -144,8 +136,6 @@ void callback(String topic, byte* payload, unsigned int length) {
       Serial.print((char)payload[i]);
       payloadTemp += (char)payload[i];
     }
-    //Serial.println();
-    //Serial.println(payloadTemp);
 
     /*
      * Ide jön a parancsok kiküldése a gateway-nek.
@@ -160,8 +150,6 @@ void callback(String topic, byte* payload, unsigned int length) {
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, payloadTemp);
     String command = String(doc["command"]);
-
-    //Serial.println(command);
     
     if(command == "restart")
     {
@@ -236,7 +224,6 @@ void callback(String topic, byte* payload, unsigned int length) {
 }
 
 void reconnect() {
-  // Loop until we're reconnected
   while (!client.connected()) 
   {
     Serial.print("Attempting MQTT connection...");
@@ -267,7 +254,6 @@ void reconnect() {
       Serial.print("failed, rc=");
       Serial.print(client.state());
       Serial.println(" try again in 5 seconds");
-      // Wait 5 seconds before retrying
       delay(5000);
     }
   }
@@ -335,7 +321,6 @@ void setup()
   display.setTextSize(2);
   display.setTextColor(WHITE);
   display.setCursor(0, 0);
-  // Display static text
   display.println("NED@L");
   display.println("GATEWAY");
   delay(2000);
@@ -348,7 +333,7 @@ void setup()
   display.println(gatewayId);
   display.display();
 
-  delay(3000);
+  delay(2000);
   display.clearDisplay();
   
   timeClient.begin();
@@ -357,29 +342,7 @@ void setup()
   client.setCallback(callback);
 
   mqttStartupStatus();
-  
-
-  /*
-   * ezt még át kell nézni
-   
-  // NTP idő
-  while(!timeClient.update()) {
-    timeClient.forceUpdate();
-  }
-  formattedDate = timeClient.getFormattedDate();
-  int splitT = formattedDate.indexOf("T");
-  ntpDate = formattedDate.substring(0, splitT);
-  ntpTime = formattedDate.substring(splitT+1, formattedDate.length()-1);
-  String timeStamp = ntpDate;
-  timeStamp += " ";
-  timeStamp += ntpTime;
  
-  String online_at_status_publish_topic = topic_prologue;
-  online_at_status_publish_topic += gatewayId;
-  online_at_status_publish_topic += "/SYS/start_at";
-  client.publish(online_at_status_publish_topic.c_str(),timeStamp);
-  */
-  
 }
 
 
