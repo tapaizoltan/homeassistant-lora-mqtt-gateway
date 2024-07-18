@@ -247,7 +247,6 @@ void reconnect() {
       mqtt_to_lora_subscribe_topic_recon += "/MQTTtoLORA";
       mqtt_to_lora_subscribe_topic_recon += "/config";
       client.subscribe(mqtt_to_lora_subscribe_topic_recon.c_str());
-      
     }
     else
     {
@@ -348,7 +347,6 @@ void setup()
 
 void loop()
 {
-
   if (millis() - lastMillis > (heartbeatTiming*1000))
   {
     lastMillis = millis();
